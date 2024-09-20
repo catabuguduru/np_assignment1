@@ -33,6 +33,7 @@ int check_desthost(char *Desthost) {
 }
 
 int main(int argc, char *argv[]) {
+    
     char *input = argv[1];
     char *port_no = strrchr(input, ':');
     if (port_no == NULL) {
@@ -47,7 +48,6 @@ int main(int argc, char *argv[]) {
     char *Destport = port_no + 1; //Get the value at the address after the port_no
 
     int address_type = check_desthost(Desthost); //Check the address type 
-
     if (address_type == 0) {  // Check if address type is 0
         printf("Invalid IP address\n");
         return 0;
@@ -55,15 +55,13 @@ int main(int argc, char *argv[]) {
 
     port = atoi(Destport);
     printf("Host %s, and port %d.\n", Desthost, port);
-#ifdef DEBUG
-    printf("Connected to %s:%d and local.\n", Desthost, port);
-#endif
 
-    if (address_type == 1) {
+    // Create socket and connect based on address type
+    if (address_type == 1) {  // IPv4
         struct sockaddr_in client;
         sock = socket(AF_INET, SOCK_STREAM, 0);
         if (sock < 0) {
-            perror("Cannot create socket with IPv4 address");
+            perror("Cannot create socket with IPv4 address\n");
             return 0;
         }
 
@@ -71,35 +69,35 @@ int main(int argc, char *argv[]) {
         client.sin_port = htons(port);
         client.sin_addr.s_addr = inet_addr(Desthost);
 
-        if (connect(sock, (struct sockaddr *) &client, sizeof(client)) < 0) {
-            perror("Connection failed");
+        if (connect(sock, (struct sockaddr *)&client, sizeof(client)) < 0) {
+            printf("ERROR: CANT CONNECT TO: %s\n", Desthost);
             close(sock);
             return 0;
         }
-    } else if (address_type == 2) {
+    } else if (address_type == 2) {  // IPv6
         struct sockaddr_in6 client;
         memset(&client, 0, sizeof(client));
 
         sock = socket(AF_INET6, SOCK_STREAM, 0);
         if (sock < 0) {
-            perror("Cannot create socket with IPv6 address");
+            printf("Cannot create socket with IPv6 address\n");
             return 0;
         }
 
         client.sin6_family = AF_INET6;
         client.sin6_port = htons(port);
         if (inet_pton(AF_INET6, Desthost, &client.sin6_addr) != 1) {
-            perror("Invalid IPv6 address");
+            perror("ERROR: RESOLVE ISSUE\n");
             close(sock);
             return 0;
         }
 
-        if (connect(sock, (struct sockaddr *) &client, sizeof(client)) < 0) {
-            perror("Connection failed with the address");
+        if (connect(sock, (struct sockaddr *)&client, sizeof(client)) < 0) {
+            printf("ERROR: CANT CONNECT TO: %s\n", Desthost);
             close(sock);
             return 0;
         }
-    } else if (address_type == 3) {
+    } else if (address_type == 3) { //DNS host
         struct addrinfo hints, *res, *rp;
 
         memset(&hints, 0, sizeof(hints));
@@ -119,24 +117,36 @@ int main(int argc, char *argv[]) {
             }
 
             if (connect(sock, rp->ai_addr, rp->ai_addrlen) == 0) {
-                printf("Connected to host %s\n", Desthost);
                 break;
             }
             close(sock);
         }
 
-        if (rp == NULL) { 
-            fprintf(stderr, "Check your DNS name, unable to attach to any address\n");
+        if (rp == NULL) {  // No address succeeded
+            fprintf(stderr, "ERROR: CANT CONNECT TO: %s\n", Desthost);
             freeaddrinfo(res);
             return 0;
         }
         freeaddrinfo(res);
     }
 
-    char buffer[1024], srv_msg[1024];
-    char *message = "OK\n";
+    // Retrieve and print the local IP and port the client is using
+    struct sockaddr_in local_addr;
+    socklen_t addr_len = sizeof(local_addr);
+    if (getsockname(sock, (struct sockaddr *)&local_addr, &addr_len) == -1) {
+        perror("getsockname() failed");
+        close(sock);
+        return -1;
+    }
 
-    // Receive the initial message
+    char local_ip[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &local_addr.sin_addr, local_ip, sizeof(local_ip));
+#ifdef DEBUG
+    printf("Connected to %s:%d and local %s:%d\n", Desthost, port, local_ip, ntohs(local_addr.sin_port));
+#endif
+
+
+    char buffer[1024], srv_msg[1024];
     bzero(buffer, sizeof(buffer));
     if (recv(sock, buffer, sizeof(buffer) - 1, 0) < 0) {
         perror("Failed to receive initial message");
@@ -144,8 +154,7 @@ int main(int argc, char *argv[]) {
         return 0;
     }
     buffer[sizeof(buffer) - 1] = '\0';
-    printf("%s", buffer);
-
+    char *message = "OK\n";
     if (strcmp(buffer, "TEXT TCP 1.0\n\n") == 0) {
         if (send(sock, message, strlen(message), 0) < 0) {
             perror("Failed to send OK message");
@@ -153,7 +162,7 @@ int main(int argc, char *argv[]) {
             return 0;
         }
     } else {
-        printf("Server repsonse doesn match!: %s\n", buffer);
+        printf("ERROR: MISMATCH PROTOCOL\n");
         close(sock);
         return 0;
     }
@@ -238,7 +247,6 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    // 
     bzero(buffer, sizeof(buffer));
     if (recv(sock, buffer, sizeof(buffer), 0) < 0) {
         perror("Failed to receive server reply");
