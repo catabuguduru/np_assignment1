@@ -54,8 +54,7 @@ int main(int argc, char *argv[]) {
     }
 
     port = atoi(Destport);
-    printf("Host %s, and port %d.\n", Desthost, port);
-
+   
     // Create socket and connect based on address type
     if (address_type == 1) {  // IPv4
         struct sockaddr_in client;
