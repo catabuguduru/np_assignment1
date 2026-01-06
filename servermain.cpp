@@ -15,7 +15,7 @@
 
 // Enable if you want debugging to be printed, see examble below.
 // Alternative, pass CFLAGS=-DDEBUG to make, make CFLAGS=-DDEBUG
-#define DEBUG
+//#define DEBUG
 
 int operation(int cnctn){
     char rcv_msg[1450];
@@ -25,7 +25,11 @@ int operation(int cnctn){
         return 0;
     }
     bzero(rcv_msg, sizeof(rcv_msg));
-    if (recv(cnctn, &rcv_msg, sizeof(rcv_msg), 0) < 0) {
+    if (recv(cnctn, &rcv_msg, sizeof(rcv_msg), 0) <= 0) {
+#ifdef DEBUG
+            fprintf(stderr, "client took too long to respond\n");
+#endif
+        send(cnctn, "ERROR TO\n", 9, 0);
         return 0;
     }
 
@@ -59,7 +63,11 @@ int operation(int cnctn){
         if (send(cnctn, reply, strlen(reply), 0) < 0) {
             return 0;
         }
-        if (recv(cnctn, &client_reply, sizeof(client_reply), 0) < 0) {
+        if (recv(cnctn, &client_reply, sizeof(client_reply), 0) <= 0) {
+#ifdef DEBUG
+            fprintf(stderr, "client took too long to respond\n");
+#endif
+            send(cnctn, "ERROR TO\n", 9, 0);
             return 0;
         }
         double result = atof(client_reply);
@@ -90,7 +98,11 @@ int operation(int cnctn){
         if (send(cnctn, reply, strlen(reply), 0) < 0) {
             return 0;
         }
-        if (recv(cnctn, &client_reply, sizeof(client_reply), 0) < 0) {
+        if (recv(cnctn, &client_reply, sizeof(client_reply), 0) <= 0) {
+#ifdef DEBUG
+            fprintf(stderr, "client took too long to respond\n");
+#endif
+            send(cnctn, "ERROR TO\n", 9, 0);
             return 0;
         }
         int result = atof(client_reply);
@@ -132,8 +144,6 @@ int check_desthost(char *Desthost, struct addrinfo **res){
 
 int main(int argc, char *argv[]){
     int sock, port;
-
-
     char *input = argv[1];
     char *last_colon = strrchr(input, ':');
     if (last_colon == NULL){
@@ -147,13 +157,14 @@ int main(int argc, char *argv[]){
 
     struct addrinfo *res;
     int address_type = check_desthost(Desthost, &res);
+#ifdef DEBUG
     printf("Address type: %d\n", address_type);
+#endif
 
     if (address_type == 0){
         printf("Invalid IP address\n");
         return 0;
     } 
-
     port = atoi(Destport);
 #ifdef DEBUG  
     printf("Host: %s, Port: %d\n", Desthost, port);

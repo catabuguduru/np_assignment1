@@ -9,7 +9,7 @@
 #include <netdb.h>
 #include <math.h>
 
-#define DEBUG
+//#define DEBUG
 
 #include <calcLib.h>
 
@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     int sock, port;
     char *Desthost = input;
     char *Destport = port_no + 1; //Get the value at the address after the port_no
-
+    printf("Host %s, and port %d.\n", Desthost, port);
     int address_type = check_desthost(Desthost); //Check the address type 
     if (address_type == 0) {  // Check if address type is 0
         printf("Invalid IP address\n");
@@ -240,7 +240,7 @@ int main(int argc, char *argv[]) {
         printf("Assignment: %s %d %d\n", command, i1, i2 );
         snprintf(result, sizeof(result), "%d\n", iresult);
     }
-
+    //sleep(6); //testing the timeout 
     if (send(sock, result, strlen(result), 0) < 0) {
         perror("Failed to send result");
         close(sock);
