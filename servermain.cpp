@@ -15,7 +15,7 @@
 
 // Enable if you want debugging to be printed, see examble below.
 // Alternative, pass CFLAGS=-DDEBUG to make, make CFLAGS=-DDEBUG
-//#define DEBUG
+#define DEBUG
 
 int operation(int cnctn){
     char rcv_msg[1450];
@@ -133,11 +133,8 @@ int check_desthost(char *Desthost, struct addrinfo **res){
     hints.ai_socktype = SOCK_STREAM;
 
     if (getaddrinfo(Desthost, NULL, &hints, res) == 0) {
-        if ((*res)->ai_family == AF_INET) {
-            return 1;
-        } else if ((*res)->ai_family == AF_INET6) {
-            return 2;
-        }
+        if ((*res)->ai_family == AF_INET) return 1; 
+        if ((*res)->ai_family == AF_INET6) return 2;       
     }
     return 0;
 }
@@ -169,8 +166,6 @@ int main(int argc, char *argv[]){
 #ifdef DEBUG  
     printf("Host: %s, Port: %d\n", Desthost, port);
 #endif
-    socklen_t cli_len;
-    cli_len = sizeof(struct sockaddr_in);
 
     if (address_type == 1 || address_type == 2){
         if (address_type == 1){
@@ -180,7 +175,7 @@ int main(int argc, char *argv[]){
                 return 0;    
             }
             struct sockaddr_in server;
-            memcpy(&server, res->ai_addr, sizeof(server));
+            memcpy(&server, res->ai_addr, res->ai_addrlen);
             server.sin_port = htons(port);
 
             if (bind(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
@@ -194,7 +189,7 @@ int main(int argc, char *argv[]){
                 return 0;    
             }
             struct sockaddr_in6 server;
-            memcpy(&server, res->ai_addr, sizeof(server));
+            memcpy(&server, res->ai_addr, res->ai_addrlen);
             server.sin6_port = htons(port);
 
             if (bind(sock, (struct sockaddr *)&server, sizeof(server)) < 0) {
@@ -206,7 +201,11 @@ int main(int argc, char *argv[]){
         listen(sock, 5); // Queue up to 5 clients
 
         while (1) {
-            int cnctn = accept(sock, res->ai_addr, &cli_len);
+            struct sockaddr_storage client_addr;
+            socklen_t cli_len = sizeof(client_addr);
+
+            int cnctn = accept(sock, (struct sockaddr *)&client_addr, &cli_len);
+
             if (cnctn < 0) {
                 printf("Accept failed\n");
                 continue;

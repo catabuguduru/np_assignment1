@@ -52,7 +52,6 @@ int main(int argc, char *argv[]) {
         printf("Invalid IP address\n");
         return 0;
     }
-
     port = atoi(Destport);
    
     // Create socket and connect based on address type
