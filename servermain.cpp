@@ -12,10 +12,10 @@
 #include <calcLib.h>
 #include <netdb.h>
 #include <sys/select.h>
-
+#include <math.h>
 // Enable if you want debugging to be printed, see examble below.
 // Alternative, pass CFLAGS=-DDEBUG to make, make CFLAGS=-DDEBUG
-#define DEBUG
+//#define DEBUG
 
 int operation(int cnctn){
     char rcv_msg[1450];
@@ -71,7 +71,7 @@ int operation(int cnctn){
             return 0;
         }
         double result = atof(client_reply);
-        D = abs(result - fresult);
+        D = fabs(result - fresult);
 #ifdef DEBUG
     printf("Servers result: %8.8g, Clients result: %8.8g \n ", result, fresult);
 #endif
